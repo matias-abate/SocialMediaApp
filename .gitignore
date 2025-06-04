@@ -1,0 +1,77 @@
+# ───────────────────────────────────────────────────────────
+#               GITIGNORE PARA PROYECTO MONOREPO
+# ───────────────────────────────────────────────────────────
+
+# ── NODE / FRONTEND ────────────────────────────────────────
+
+# Dependencias instaladas
+node_modules/
+
+# Archivos de build/Vite
+dist/
+build/
+.vite/
+
+# Logs de npm/yarn/pnpm
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Entornos / Variables
+.env
+.env.local
+.env.*.local
+
+# Caché de TypeScript (si lo usas)
+*.tsbuildinfo
+
+# Editor (VSCode, etc.) y OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── PYTHON / BACKEND ────────────────────────────────────────
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Archivos de configuración/entorno
+*.env
+*.env.*
+
+# Distribuciones / paquetes compilados
+*.egg-info/
+dist/
+build/
+
+# Base de datos local (si llegas a usar)
+*.sqlite3
+
+# Logs
+*.log
+
+# Passlib / Uvicorn
+*.uvicorn.log
+
+# Editor (VSCode, PyCharm, etc.) y OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── OTROS DETALLES ÚTILES ───────────────────────────────────
+
+# Archivos temporales de sistema
+*.swp
+*~
+# Archivos de JetBrains
+*.iml
