@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -10,17 +9,16 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1) Creamos un URLSearchParams con los campos username y password
+    // Construimos form-urlencoded en lugar de JSON
     const formBody = new URLSearchParams();
     formBody.append("username", username);
     formBody.append("password", password);
-    // Nota: grant_type ya viene implícito como "password" en OAuth2PasswordRequestForm
+    // grant_type viene implícito como "password"
 
     try {
       const resp = await fetch("http://127.0.0.1:8000/auth/login", {
         method: "POST",
         headers: {
-          // IMPORTANTE: usamos application/x-www-form-urlencoded
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: formBody.toString(),
@@ -28,32 +26,33 @@ export default function Login() {
 
       if (resp.ok) {
         const data = await resp.json();
-        // Por ejemplo: guardamos el token y navegamos a /home
+        // Guardamos token y navegamos (ajusta según tu flujo)
         localStorage.setItem("access_token", data.access_token);
         navigate("/home");
       } else {
         const errorData = await resp.json();
-        console.error("Error al iniciar sesión:", errorData);
         if (resp.status === 401) {
           alert("Usuario o contraseña inválidos.");
         } else if (resp.status === 422) {
-          // 422 significa que faltó username o password en form-urlencoded
-          alert("El formulario de login está mal enviado:\n" +
-            JSON.stringify(errorData.detail, null, 2));
+          // 422: FastAPI no está recibiendo los campos como form-urlencoded
+          alert(
+            "Formato de envío inválido:\n" +
+              JSON.stringify(errorData.detail, null, 2)
+          );
         } else {
-          alert("Error desconocido al iniciar sesión.");
+          alert("Error inesperado al iniciar sesión.");
         }
       }
     } catch (err) {
       console.error("Error de red al iniciar sesión:", err);
-      alert("Ocurrió un error inesperado al conectar con el servidor.");
+      alert("No se pudo conectar con el servidor.");
     }
   };
 
   return (
     <div className="flex min-h-screen bg-black text-white items-center justify-center px-4">
       <div className="flex w-full max-w-6xl gap-x-8">
-        {/* Columna izquierda (SM) */}
+        {/* Columna izquierda (logo “SM”) */}
         <div className="w-1/2 flex items-center justify-center p-4">
           <div
             className="text-[400px] font-bold select-none"
