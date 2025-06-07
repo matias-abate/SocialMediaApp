@@ -1,28 +1,20 @@
-// Frontend/src/pages/Messages.jsx
-
+// src/pages/Messages.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 
 export default function Messages() {
-  // Array de mensajes recibidos (cada m: { id, sender_username, content, created_at })
   const [inbox, setInbox] = useState([]);
-  // Array de mensajes enviados (cada m: { id, receiver_username, content, created_at })
   const [sent, setSent] = useState([]);
-  // Lista de amigos para el <select> (cada f: { _id, username })
   const [friends, setFriends] = useState([]);
-  // Usuario (username) seleccionado en el <select>
   const [selectedFriend, setSelectedFriend] = useState("");
-  // Texto del nuevo mensaje
   const [newMessage, setNewMessage] = useState("");
-  // Para mostrar errores
   const [error, setError] = useState(null);
-  // Propio username, extraído del token
-  const [myUsername, setMyUsername] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   const navigate = useNavigate();
 
-  // 1) Extraer el propio username del token
+  // 1) Extraer userId del token
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -30,76 +22,73 @@ export default function Messages() {
       return;
     }
     try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      setMyUsername(payload.sub);
+      const { sub } = JSON.parse(atob(token.split(".")[1]));
+      setUserId(sub);
     } catch {
       setError("Token inválido");
     }
   }, [navigate]);
 
-  // 2) Una vez tengamos myUsername, cargar inbox, sent y amigos
+  // 2) Cargar inbox, sent y amigos por separado
   useEffect(() => {
-    if (!myUsername) return;
+    if (!userId) return;
+    const token = localStorage.getItem("access_token");
 
-    async function loadData() {
-      setError(null);
-      const token = localStorage.getItem("access_token");
-
+    // 2.a) Amigos (siempre queremos esto)
+    (async () => {
       try {
-        // 2.a) Bandeja de entrada
-        const inResp = await fetch(
-          `${API_URL}/messages/inbox/${myUsername}?skip=0&limit=50`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!inResp.ok) {
-          const data = await inResp.json().catch(() => ({}));
-          throw new Error(data.detail || "Error al cargar bandeja de entrada");
-        }
-        const inData = await inResp.json();
-
-        // 2.b) Mensajes enviados
-        const sentResp = await fetch(
-          `${API_URL}/messages/sent/${myUsername}?skip=0&limit=50`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!sentResp.ok) {
-          const data = await sentResp.json().catch(() => ({}));
-          throw new Error(data.detail || "Error al cargar mensajes enviados");
-        }
-        const sentData = await sentResp.json();
-
-        // 2.c) Lista de amigos (para el <select>)
-        const friendsResp = await fetch(`${API_URL}/friends/${myUsername}`, {
+        const resp = await fetch(`${API_URL}/friends/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!friendsResp.ok) {
-          const data = await friendsResp.json().catch(() => ({}));
-          throw new Error(data.detail || "Error al cargar lista de amigos");
-        }
-        const friendsData = await friendsResp.json(); // [{ _id, username }, …]
-
-        // 2.d) Guardar en estados
-        setInbox(inData);
-        setSent(sentData);
-        setFriends(friendsData);
-      } catch (err) {
-        setError(err.message);
+        if (!resp.ok) throw new Error("Error al cargar lista de amigos");
+        const data = await resp.json();
+        setFriends(data);
+      } catch (e) {
+        console.error("Friends load error:", e);
+        // no interrumpe las otras cargas
       }
-    }
+    })();
 
-    loadData();
-  }, [myUsername]);
+    // 2.b) Bandeja de entrada
+    (async () => {
+      try {
+        const resp = await fetch(
+          `${API_URL}/messages/inbox/${userId}?skip=0&limit=50`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!resp.ok) throw new Error("Error al cargar bandeja de entrada");
+        const data = await resp.json();
+        setInbox(data);
+      } catch (e) {
+        console.error("Inbox load error:", e);
+        setError(e.message);
+      }
+    })();
 
-  // 3) Handler para cambiar el <select> de amigos
-  const handleSelectChange = (e) => {
-    setSelectedFriend(e.target.value);
-  };
+    // 2.c) Mensajes enviados
+    (async () => {
+      try {
+        const resp = await fetch(
+          `${API_URL}/messages/sent/${userId}?skip=0&limit=50`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!resp.ok) throw new Error("Error al cargar mensajes enviados");
+        const data = await resp.json();
+        setSent(data);
+      } catch (e) {
+        console.error("Sent load error:", e);
+        // no sobreescribe el mensaje de inbox
+      }
+    })();
+  }, [userId]);
 
-  // 4) Handler para enviar un nuevo mensaje
+  // Handlers
+  const handleSelectChange = (e) => setSelectedFriend(e.target.value);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!selectedFriend) {
-      setError("Debes seleccionar un amigo para enviar el mensaje.");
+      setError("Debes seleccionar un amigo.");
       return;
     }
     if (!newMessage.trim()) {
@@ -109,19 +98,8 @@ export default function Messages() {
     setError(null);
 
     const token = localStorage.getItem("access_token");
-    let senderId = "";
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      senderId = payload.sub;
-    } catch {
-      setError("Token inválido");
-      return;
-    }
-
-    // Construimos el body según el modelo Message (input):
-    // { sender_id: string, receiver_id: string, content: string, created_at: string }
     const body = {
-      sender_id: senderId,
+      sender_id: userId,
       receiver_id: selectedFriend,
       content: newMessage.trim(),
       created_at: new Date().toISOString(),
@@ -137,31 +115,24 @@ export default function Messages() {
         body: JSON.stringify(body),
       });
       if (!resp.ok) {
-        const dataErr = await resp.json().catch(() => ({}));
-        throw new Error(dataErr.detail || "Error al enviar mensaje");
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || "Error al enviar mensaje");
       }
-
-      // 4.a) Recargar sólo la lista de “sent” para mostrar el nuevo
+      // recarga sólo los enviados
       const sentResp = await fetch(
-        `${API_URL}/messages/sent/${myUsername}?skip=0&limit=50`,
+        `${API_URL}/messages/sent/${userId}?skip=0&limit=50`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!sentResp.ok) {
-        throw new Error("Error al recargar mensajes enviados");
-      }
       const sentData = await sentResp.json();
       setSent(sentData);
-
-      // Limpiar campos del formulario
       setNewMessage("");
       setSelectedFriend("");
-    } catch (err) {
-      setError(err.message);
+    } catch (e) {
+      setError(e.message);
     }
   };
 
   return (
-    //  ¡IMPRESCINDIBLE!: pt-16 para que todo quede debajo del Navbar fijo
     <div className="bg-gray-900 min-h-screen text-white pt-16 px-4">
       <div className="max-w-3xl mx-auto mt-8 space-y-6">
         <h1 className="text-2xl mb-4">Mensajes</h1>
@@ -171,14 +142,13 @@ export default function Messages() {
           </div>
         )}
 
-        {/* ─── Formulario para enviar un mensaje ─── */}
+        {/* Formulario de envío */}
         <form
           onSubmit={handleSendMessage}
           className="bg-gray-800 p-6 rounded-lg shadow-md space-y-4"
         >
           <h2 className="text-xl font-medium">Enviar un mensaje</h2>
 
-          {/* Select para escoger amigo */}
           <div>
             <label htmlFor="friend" className="block text-gray-300 mb-1">
               Seleccioná un amigo:
@@ -187,28 +157,27 @@ export default function Messages() {
               id="friend"
               value={selectedFriend}
               onChange={handleSelectChange}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
             >
               <option value="">-- Elige un amigo --</option>
               {friends.map((f) => (
-                <option key={f._id} value={f.username}>
+                <option key={f._id} value={f._id}>
                   {f.username}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Textarea para el mensaje */}
           <div>
             <label htmlFor="message" className="block text-gray-300 mb-1">
               Mensaje:
             </label>
             <textarea
               id="message"
-              rows="3"
+              rows={3}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-gray-700 text-white rounded-md px-3 py-2 resize-none focus:ring-2 focus:ring-blue-500"
               placeholder="Escribí tu mensaje..."
             />
           </div>
@@ -216,14 +185,14 @@ export default function Messages() {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full text-white font-medium transition"
+              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full text-white"
             >
               Enviar Mensaje
             </button>
           </div>
         </form>
 
-        {/* ─── Bandeja de Entrada ─── */}
+        {/* Bandeja de Entrada */}
         <section className="mb-8">
           <h2 className="text-xl text-gray-100 mb-2">Bandeja de Entrada</h2>
           {inbox.length === 0 ? (
@@ -248,7 +217,7 @@ export default function Messages() {
           )}
         </section>
 
-        {/* ─── Mensajes Enviados ─── */}
+        {/* Mensajes Enviados */}
         <section>
           <h2 className="text-xl text-gray-100 mb-2">Mensajes Enviados</h2>
           {sent.length === 0 ? (

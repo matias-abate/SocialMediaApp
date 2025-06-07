@@ -2,101 +2,95 @@ import {
     HomeIcon,
     EnvelopeIcon,
     UserGroupIcon,
-    PlusIcon,
+    PencilSquareIcon,
     EllipsisHorizontalCircleIcon,
   } from "@heroicons/react/24/outline";
   import { NavLink, useNavigate } from "react-router-dom";
   import clsx from "clsx";
   
   const links = [
-    { to: "/home", label: "Inicio", icon: HomeIcon },
+    { to: "/home",     label: "Inicio",   icon: HomeIcon },
     { to: "/messages", label: "Mensajes", icon: EnvelopeIcon },
-    { to: "/friends", label: "Amigos", icon: UserGroupIcon },
+    { to: "/friends",  label: "Amigos",   icon: UserGroupIcon },
   ];
   
   export default function Sidebar() {
     const navigate = useNavigate();
   
-    /* ---------- STYLES COMUNES ---------- */
-    const base =
-      "flex items-center gap-3 px-4 py-3 rounded-full transition-colors";
-  
     return (
       <>
-        {/* DESKTOP ► barra izquierda */}
-        <nav className="hidden lg:flex flex-col items-start fixed top-0 left-0 h-screen w-60 p-4">
+        {/* --- DESKTOP SIDEBAR --- */}
+        <nav className="
+          hidden md:flex flex-col items-start
+          w-64 shrink-0 sticky top-0 h-screen
+          bg-gray-900 text-white
+          px-4 py-6
+        ">
           {/* Logo */}
           <button
             onClick={() => navigate("/home")}
-            className="text-4xl font-black mb-8 tracking-tight select-none"
+            className="text-3xl font-extrabold mb-8"
           >
             SM
           </button>
   
-          {/* Enlaces */}
-          <ul className="flex flex-col gap-1 w-full">
+          {/* Nav links */}
+          <ul className="flex flex-col gap-2 w-full">
             {links.map(({ to, label, icon: Icon }) => (
               <li key={to}>
                 <NavLink
                   to={to}
                   className={({ isActive }) =>
                     clsx(
-                      base,
+                      "flex items-center gap-4 px-4 py-3 rounded-full w-full transition",
                       isActive
                         ? "bg-white text-black font-semibold"
-                        : "hover:bg-white/10 text-white"
+                        : "hover:bg-white/10 text-gray-300"
                     )
                   }
                 >
-                  <Icon className="h-7 w-7 shrink-0" />
+                  <Icon className="h-6 w-6" />
                   <span className="text-lg">{label}</span>
                 </NavLink>
               </li>
             ))}
           </ul>
   
-          {/* CTA grande */}
+          {/* CTA Post */}
           <button
             onClick={() => navigate("/home?#composer")}
-            className="mt-auto w-full py-3 bg-blue-500 hover:bg-blue-600 text-white text-lg font-bold rounded-full"
+            className="mt-auto bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg w-full py-3 rounded-full"
           >
             Postear
           </button>
         </nav>
   
-        {/* MOBILE ► barra inferior */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-black/90 border-t border-white/20 backdrop-blur flex justify-around py-2">
+        {/* --- MOBILE BOTTOM NAV --- */}
+        <nav className="
+          md:hidden fixed bottom-0 left-0 right-0
+          flex justify-around bg-gray-900 border-t border-gray-700
+          py-2 z-50 text-white
+        ">
           {links.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
-              title={label}
               className={({ isActive }) =>
                 clsx(
-                  "flex flex-col items-center gap-0.5 text-xs",
-                  isActive ? "text-blue-400" : "text-gray-300"
+                  "flex flex-col items-center gap-1 text-xs",
+                  isActive ? "text-blue-400" : "text-gray-400"
                 )
               }
             >
               <Icon className="h-6 w-6" />
+              <span>{label}</span>
             </NavLink>
           ))}
   
-          {/* FAB de Posteo */}
-          <button
-            onClick={() => navigate("/home?#composer")}
-            aria-label="Nuevo post"
-            className="relative -translate-y-4 bg-blue-500 hover:bg-blue-600 p-4 rounded-full shadow-md text-white"
-          >
-            <PlusIcon className="h-6 w-6" />
-          </button>
-  
-          {/* Menú "Más" */}
-          <button
-            title="Más"
-            className="flex flex-col items-center gap-0.5 text-gray-300"
-          >
+          {/* Más opciones */}
+          <button className="flex flex-col items-center gap-1 text-gray-400">
             <EllipsisHorizontalCircleIcon className="h-6 w-6" />
+            <span className="text-xs">Más</span>
           </button>
         </nav>
       </>
