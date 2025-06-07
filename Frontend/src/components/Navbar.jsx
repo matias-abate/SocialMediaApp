@@ -1,52 +1,40 @@
 // src/components/Navbar.jsx
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function Navbar({ currentUser, onLogout }) {
-  const navigate = useNavigate();
-
   return (
-    <nav className="bg-gray-800 text-gray-200 p-4 flex justify-between items-center">
-      <div>
-        <Link to="/home" className="mr-4 hover:text-white">
-          Inicio
+    <nav className="fixed top-0 left-0 w-full bg-black h-16 flex items-center justify-between px-8 z-50">
+      {/* Izquierda: enlaces */}
+      <div className="flex space-x-12">
+        <Link
+          to="/home"
+          className="text-white text-lg hover:underline transition-colors"
+        >
+          Home
         </Link>
-        <Link to="/messages" className="mr-4 hover:text-white">
-          Mensajes
+        <Link
+          to="/friends"
+          className="text-white text-lg hover:underline transition-colors"
+        >
+          Friends
         </Link>
-        <Link to="/friends" className="hover:text-white">
-          Amigos
+        <Link
+          to="/messages"
+          className="text-white text-lg hover:underline transition-colors"
+        >
+          Messages
         </Link>
       </div>
 
+      {/* Derecha: botón de logout */}
       <div>
-        {currentUser ? (
-          <>
-            <span className="mr-4">Bienvenido, {currentUser.username}</span>
-            <button
-              onClick={() => {
-                onLogout();
-                navigate("/login");
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded"
-            >
-              Cerrar Sesión
-            </button>
-          </>
-        ) : (
-          <>
-            <Link
-              to="/login"
-              className="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded mr-2"
-            >
-              Iniciar Sesión
-            </Link>
-            <Link
-              to="/register"
-              className="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded"
-            >
-              Registro
-            </Link>
-          </>
+        {currentUser && (
+          <button
+            onClick={onLogout}
+            className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Cerrar sesión
+          </button>
         )}
       </div>
     </nav>

@@ -1,202 +1,218 @@
-// Frontend/src/pages/Friends.jsx
-
-import { useEffect, useState } from "react";
+// src/pages/Friends.jsx
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config";
 
 export default function Friends() {
-  const [friends, setFriends] = useState([]);           // Amigos actuales (lista de usernames)
-  const [allUsers, setAllUsers] = useState([]);         // Lista de todos los usuarios (objetos {id, username})
-  const [selectedUser, setSelectedUser] = useState(""); // Username selecconado en el <select>
+  const [friends, setFriends] = useState([]);         // array de usernames
+  const [allUsers, setAllUsers] = useState([]);       // [{ id, username }]
+  const [suggestions, setSuggestions] = useState([]); // array de usernames
+  const [selectedUser, setSelectedUser] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Al montar, cargamos:
-    //  a) La lista de amigos de este usuario
-    //  b) La lista de TODOS los usuarios (para el desplegable)
-    async function loadFriendsAndUsers() {
-      setError(null);
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-      let username;
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        username = payload.sub; 
-      } catch {
-        setError("Token inválido");
-        return;
-      }
-
-      // 1) Cargar amigos
-      try {
-        const resp = await fetch(`${API_URL}/friends/${username}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!resp.ok) {
-          const data = await resp.json();
-          throw new Error(data.detail || "Error al listar amigos");
-        }
-        const dataFriends = await resp.json(); // Array de usernames
-        setFriends(dataFriends);
-      } catch (err) {
-        setError(err.message);
-      }
-
-      // 2) Cargar todos los usuarios para el <select>
-      try {
-        const resp2 = await fetch(`${API_URL}/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!resp2.ok) {
-          const data = await resp2.json();
-          throw new Error(data.detail || "Error al cargar usuarios");
-        }
-        const dataUsers = await resp2.json(); 
-        // dataUsers viene como [{ _id, username, email }, ...]
-        // Ajustamos a la forma { id, username }:
-        setAllUsers(dataUsers.map(u => ({ id: u._id, username: u.username })));
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-
-    loadFriendsAndUsers();
-  }, [navigate]);
-
-  // Cambia selectedUser al elegir en el <select>
-  const handleSelectChange = (e) => {
-    setSelectedUser(e.target.value);
-  };
-
-  // Cuando se hace clic en “Agregar”, primero validamos si ya es amigo;
-  // si no, enviamos POST /friends/{mi}/{otro}.
-  const handleAddFriend = async () => {
-    if (!selectedUser) return;
-
-    // 1) Si ya es amigo, mostrar pop-up y salir
-    if (friends.includes(selectedUser)) {
-      window.alert("Amigo ya agregado");
-      return;
-    }
-
-    // 2) Si no es amigo, enviamos al backend
+  const reloadAll = async () => {
     const token = localStorage.getItem("access_token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-    let myUsername;
+    if (!token) { navigate("/login"); return; }
+    let me;
     try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      myUsername = payload.sub;
+      me = JSON.parse(atob(token.split(".")[1])).sub;
     } catch {
       setError("Token inválido");
       return;
     }
-
-    try {
-      const resp = await fetch(
-        `${API_URL}/friends/${myUsername}/${selectedUser}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!resp.ok) {
-        const data = await resp.json();
-        throw new Error(data.detail || "Error al enviar solicitud");
-      }
-
-      // 3) Si todo salió bien, mostramos “Solicitud enviada” y recargamos amigos
-      window.alert("Solicitud enviada");
-
-      // 3.a) Recargar la lista de amigos
-      const updated = await fetch(`${API_URL}/friends/${myUsername}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (updated.ok) {
-        const newFriends = await updated.json();
-        setFriends(newFriends);
-      }
-
-      // Limpiar selección
-      setSelectedUser("");
-    } catch (err) {
-      setError(err.message);
+    // Amigos
+    const fResp = await fetch(`${API_URL}/friends/${me}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (fResp.ok) {
+      const data = await fResp.json();
+      const names = Array.isArray(data)
+        ? data.map(item => item.username || item.id)
+        : [];
+      setFriends(Array.from(new Set(names)));
+    }
+    // Sugerencias
+    const sResp = await fetch(`${API_URL}/friends/suggestions/${me}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (sResp.ok) {
+      const data = await sResp.json();
+      setSuggestions(Array.from(new Set(data)));
     }
   };
 
+  useEffect(() => {
+    (async () => {
+      setError(null);
+      await reloadAll();
+      // Todos los usuarios
+      const token = localStorage.getItem("access_token");
+      if (!token) { return; }
+      try {
+        const resp = await fetch(`${API_URL}/users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!resp.ok) throw new Error("Error al cargar usuarios");
+        const data = await resp.json();
+        const users = data.map(u => ({
+          id: u._id,
+          username: u.username
+        }));
+        setAllUsers(users);
+      } catch (e) {
+        setError(e.message);
+      }
+    })();
+  }, [navigate]);
+
+  // Agrega un amigo desde el <select>
+  const handleAddFriend = async () => {
+    if (!selectedUser) return;
+    if (friends.includes(selectedUser)) {
+      alert("Ya es tu amigo");
+      return;
+    }
+    const token = localStorage.getItem("access_token");
+    let me;
+    try {
+      me = JSON.parse(atob(token.split(".")[1])).sub;
+    } catch {
+      setError("Token inválido"); return;
+    }
+    try {
+      const resp = await fetch(
+        `${API_URL}/friends/${me}/${selectedUser}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (!resp.ok) {
+        const { detail } = await resp.json().catch(() => ({}));
+        throw new Error(detail || "Error al agregar amigo");
+      }
+      alert("Solicitud enviada");
+      setSelectedUser("");
+      await reloadAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  // Agrega un amigo desde la lista de sugerencias
+  const handleAddSuggested = async username => {
+    const token = localStorage.getItem("access_token");
+    let me;
+    try {
+      me = JSON.parse(atob(token.split(".")[1])).sub;
+    } catch {
+      setError("Token inválido"); return;
+    }
+    try {
+      const resp = await fetch(
+        `${API_URL}/friends/${me}/${username}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      if (!resp.ok) {
+        const { detail } = await resp.json().catch(() => ({}));
+        throw new Error(detail || "Error al agregar sugerido");
+      }
+      alert(`Agregaste a ${username}`);
+      await reloadAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  // Lista sin duplicados, excluyendo ya-amigos
+  const available = allUsers
+    .map(u => u.username)
+    .filter(u => u && !friends.includes(u) && u !== "");
+
   return (
-    <div className="max-w-3xl mx-auto mt-8 px-4">
-      <h1 className="text-2xl mb-4 text-white">Mis Amigos</h1>
+    <div className="bg-gray-900 min-h-screen text-white pt-16 px-4">
+      <div className="max-w-3xl mx-auto space-y-6 mt-8">
+        <h1 className="text-2xl">Mis Amigos</h1>
+        {error && (
+          <div className="bg-red-600 p-2 rounded">{error}</div>
+        )}
 
-      {error && (
-        <div className="bg-red-600 text-white p-2 rounded mb-4">{error}</div>
-      )}
-
-      {/* ───────── DESPLEGABLE DE TODOS LOS USUARIOS ───────── */}
-      <div className="mb-6">
-        <label
-          htmlFor="userSelect"
-          className="block text-gray-300 font-medium mb-2"
-        >
-          Agregar nuevo amigo:
-        </label>
-        <div className="flex space-x-2 items-center">
-          <select
-            id="userSelect"
-            value={selectedUser}
-            onChange={handleSelectChange}
-            className="flex-1 bg-gray-700 text-white py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">-- Selecciona un usuario --</option>
-            {allUsers
-              // Filtramos para no mostrarnos a nosotros mismos ni a quienes ya son amigos
-              .filter((u) => {
-                let me = "";
-                try {
-                  me = JSON.parse(
-                    atob(localStorage.getItem("access_token").split(".")[1])
-                  ).sub;
-                } catch {
-                  me = "";
-                }
-                return u.username !== me && !friends.includes(u.username);
-              })
-              .map((u) => (
-                <option key={u.id} value={u.username}>
-                  {u.username}
+        {/* Form: Agregar amigo */}
+        <div>
+          <label className="block mb-2">Agregar nuevo amigo:</label>
+          <div className="flex space-x-2">
+            <select
+              value={selectedUser}
+              onChange={e => setSelectedUser(e.target.value)}
+              className="flex-1 bg-gray-700 p-2 rounded"
+            >
+              <option value="">-- selecciona --</option>
+              {available.map((username, i) => (
+                <option key={`${username}-${i}`} value={username}>
+                  {username}
                 </option>
               ))}
-          </select>
-          <button
-            onClick={handleAddFriend}
-            disabled={!selectedUser}
-            className={`bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md transition ${
-              !selectedUser ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            Agregar
-          </button>
+            </select>
+            <button
+              onClick={handleAddFriend}
+              disabled={!selectedUser}
+              className="bg-blue-500 px-4 rounded disabled:opacity-50"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
+
+        {/* Amigos actuales */}
+        <div>
+          <h2 className="text-xl mb-2">Amigos actuales</h2>
+          {friends.length > 0 ? (
+            <ul className="space-y-1">
+              {friends.map((username, i) => (
+                <li
+                  key={`${username}-${i}`}
+                  className="bg-gray-800 p-2 rounded"
+                >
+                  {username}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-400">No tienes amigos aún.</p>
+          )}
+        </div>
+
+        {/* Sugerencias */}
+        <div>
+          <h2 className="text-xl mb-2">Sugerencias</h2>
+          {suggestions.length > 0 ? (
+            <ul className="space-y-1">
+              {suggestions.map((username, i) => (
+                <li
+                  key={`${username}-${i}`}
+                  className="bg-gray-800 p-2 rounded flex justify-between"
+                >
+                  <span>{username}</span>
+                  <button
+                    onClick={() => handleAddSuggested(username)}
+                    className="bg-green-500 px-3 rounded text-sm"
+                  >
+                    Agregar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-400">
+              No hay sugerencias por el momento.
+            </p>
+          )}
         </div>
       </div>
-
-      {/* ───────── LISTA DE AMIGOS ───────── */}
-      {friends.length > 0 ? (
-        <ul className="list-disc list-inside text-gray-200 space-y-1">
-          {friends.map((f) => (
-            <li key={f} className="bg-gray-800 p-2 rounded-md">
-              {f}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-400">No tienes amigos aún.</p>
-      )}
     </div>
   );
 }
