@@ -1,5 +1,7 @@
 // tailwind.config.cjs
 /** @type {import('tailwindcss').Config} */
+// tailwind.config.cjs
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: "class",
   content: [
@@ -9,10 +11,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#4F46E5",
-        secondary: "#DB2777",
-        surface: "rgba(255,255,255,0.05)",
-        base: "#0F172A",
+        primary: "#1DA1F2",       // azul estilo X
+        twitterGray: "#14171A",    // fondo sidebar
+        twitterLightGray: "#AAB8C2", // iconos inactivos
       },
       backdropBlur: {
         xs: "4px",

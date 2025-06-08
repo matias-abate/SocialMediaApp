@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 🔥 Quitar el flex/centrado global para que tu root ocupe el 100% de ancho */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -28,8 +29,6 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -70,5 +69,3 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-
-

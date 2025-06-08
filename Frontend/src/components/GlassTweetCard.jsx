@@ -31,7 +31,6 @@ export default function GlassTweetCard({ post }) {
               className="flex items-center gap-1 hover:text-primary transition"
             >
               <Icon className="h-5 w-5" />
-              {/* Aquí podrías mostrar post.counts[i] si lo deseas */}
             </motion.button>
           )
         )}

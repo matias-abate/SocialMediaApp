@@ -1,27 +1,31 @@
 // src/layouts/AppLayout.jsx
 import { Outlet } from "react-router-dom";
-import Navbar from "@/components/Navbar";
+import Slidebar from "@/components/Slidebar";
+import Rightbar from "@/components/Rightbar";
 import FloatingPostButton from "@/components/FloatingPostButton";
+import { NAV_H } from "./LayoutConsts";
 
 export default function AppLayout() {
   return (
-    <div className="bg-gray-900 text-white min-h-screen">
-      {/* 1. Navbar full-width */}
-      <Navbar />
+    <div className="flex bg-gray-900 text-white min-h-screen">
+      {/* 1) Sidebar fijo a la izquierda */}
+      <Slidebar />
 
-      {/* 2. Contenedor centrado */}
-      <div className="pt-[64px] flex justify-center"> 
-        <main className="w-full max-w-3xl px-4 sm:px-6 space-y-8 pb-16">
+      {/* 2) Contenido principal centrado */}
+      <main
+        className="flex-1 pt-[64px] pb-16 px-4"
+        style={{ paddingTop: NAV_H }}
+      >
+        <div className="max-w-[640px] mx-auto space-y-6">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
 
-      {/* 3. Botón flotante fijo */}
-      <FloatingPostButton
-        onClick={() => {
-          /* aquí abrirías tu composer o modal */
-        }}
-      />
+      {/* 3) Rightbar a la derecha */}
+      <Rightbar />
+
+      {/* 4) Botón flotante */}
+      <FloatingPostButton onClick={() => { /* abre tu modal/composer */ }} />
     </div>
   );
 }
